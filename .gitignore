@@ -1,0 +1,9 @@
+# Agnes 工作缓存与产物（含上传图片、生成图元数据）
+.agnes/
+
+# macOS
+.DS_Store
+
+# 临时文件
+_check.js
+lunar_table.js

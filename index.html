@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>墨池 · 日记许愿池</title>
+<style>
+  :root{
+    --paper:#f5f1e8;
+    --paper2:#efe8d8;
+    --ink:#1a1a1a;
+    --ink-soft:rgba(26,26,26,.72);
+    --dai:#3a4a5a;
+    --zhu:#9e2b25;
+    --qing:#4a6a6a;
+    --xuan:rgba(245,241,232,.9);
+    --seal:#a52a24;
+    --shadow:0 8px 30px rgba(26,26,26,.18);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    font-family:"Kaiti SC","STKaiti","KaiTi","楷体",serif;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(74,106,106,.10), transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(58,74,90,.10), transparent 45%),
+      var(--paper);
+    color:var(--ink);
+    overflow-x:hidden;
+    position:relative;
+    min-height:100vh;
+  }
+  /* 真实宣纸纹理背景（缺失时靠上方渐变兜底） */
+  body{
+    background-image:
+      url("assets/xuan-paper.webp"),
+      radial-gradient(circle at 20% 15%, rgba(74,106,106,.10), transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(58,74,90,.10), transparent 45%);
+    background-blend-mode:soft-light, normal, normal;
+    background-repeat:no-repeat,no-repeat,no-repeat;
+    background-size:cover,cover,cover;
+  }
+  /* 纸纹理（细微网格，叠加于宣纸之上） */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(26,26,26,.018) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(26,26,26,.014) 0 1px, transparent 1px 4px);
+    mix-blend-mode:multiply;
+  }
+  /* 远山 SVG 背景 */
+  .mountains{
+    position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.85;
+  }
+  .mountains svg{width:100%;height:100%}
+
+  .wrap{
+    position:relative;z-index:2;max-width:1180px;margin:0 auto;
+    padding:34px 26px 60px;
+  }
+
+  /* ===== 头部 ===== */
+  header{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:20px;flex-wrap:wrap;margin-bottom:22px;
+  }
+  .title-block{display:flex;align-items:flex-end;gap:18px}
+  .main-title{
+    writing-mode:vertical-rl;
+    font-size:52px;letter-spacing:6px;font-weight:700;
+    color:var(--ink);text-shadow:0 1px 0 rgba(255,255,255,.6);
+    height:130px;line-height:1;
+  }
+  .sub-title{
+    writing-mode:vertical-rl;font-size:15px;color:var(--ink-soft);
+    letter-spacing:3px;height:130px;line-height:1.4;
+    border-left:1px solid rgba(26,26,26,.25);padding-left:14px;
+  }
+  .seal{
+    width:58px;height:58px;background:var(--seal);color:#f7efe2;
+    display:flex;align-items:center;justify-content:center;
+    writing-mode:vertical-rl;font-size:15px;letter-spacing:2px;
+    border-radius:6px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25);
+    font-weight:700;opacity:.9;
+  }
+  .header-right{display:flex;align-items:center;gap:14px;margin-left:auto}
+  .today{
+    text-align:right;font-size:14px;color:var(--ink-soft);line-height:1.7;
+  }
+  .today .lunar{color:var(--zhu);font-size:13px}
+
+  /* ===== 布局 ===== */
+  .layout{
+    display:grid;grid-template-columns:1fr 400px;gap:26px;
+  }
+  @media(max-width:960px){.layout{grid-template-columns:1fr}}
+
+  .card{
+    background:var(--xuan);backdrop-filter:blur(3px);
+    border:1px solid rgba(26,26,26,.12);border-radius:4px;
+    box-shadow:var(--shadow);position:relative;
+  }
+  .card .corner{position:absolute;width:14px;height:14px;border:1px solid rgba(26,26,26,.35)}
+  .corner.tl{top:6px;left:6px;border-right:none;border-bottom:none}
+  .corner.tr{top:6px;right:6px;border-left:none;border-bottom:none}
+  .corner.bl{bottom:6px;left:6px;border-right:none;border-top:none}
+  .corner.br{bottom:6px;right:6px;border-left:none;border-top:none}
+
+  .card-title{
+    writing-mode:vertical-rl;font-size:18px;letter-spacing:4px;
+    color:var(--ink);padding:14px 8px;font-weight:700;
+    border-right:1px solid rgba(26,26,26,.15);height:150px;
+    display:flex;justify-content:flex-end;
+  }
+  .card-body{padding:18px 18px 20px}
+
+  /* ===== 墨池 ===== */
+  .pool-card{overflow:hidden}
+  .pool-wrap{position:relative;height:430px;
+    background:url("assets/ink-ink.jpg") center/cover no-repeat #0e1114;
+  }
+  /* 水墨纹理叠层（混合让纹理融入墨池） */
+  .pool-wrap::before{
+    content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:url("assets/ink-wash-grain.jpg") center/cover;
+    mix-blend-mode:soft-light;opacity:.5;
+  }
+  #pool{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
+  #charmLayer{z-index:2}
+  .pool-cap{z-index:3}
+  .pool-cap{
+    position:absolute;left:14px;bottom:10px;writing-mode:vertical-rl;
+    font-size:12px;letter-spacing:3px;color:rgba(245,241,232,.8);
+    pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+
+  /* 签影 */
+  .charm{
+    position:absolute;width:34px;height:96px;cursor:pointer;
+    border-radius:3px;
+    background:linear-gradient(180deg,#f7f2e6 0%,#efe7d4 100%);
+    box-shadow:0 4px 10px rgba(0,0,0,.28), inset 0 0 0 1px rgba(26,26,26,.08);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:13px;line-height:1.3;color:var(--ink);
+    padding:6px 2px;overflow:hidden;writing-mode:vertical-rl;
+    transition:transform .35s ease, box-shadow .35s ease;
+    animation:floaty 5s ease-in-out infinite;
+  }
+  .charm .c-top{width:100%;height:5px;flex:none;
+    background:var(--dai);border-radius:0 0 3px 3px;margin-top:2px}
+  .charm .c-text{margin-top:8px;font-size:14px;letter-spacing:2px;max-height:70px;overflow:hidden}
+  .charm::before{content:"";position:absolute;top:-6px;left:50%;width:2px;height:8px;background:var(--zhu);transform:translateX(-50%)}
+  .charm[data-color="dai"] .c-top{background:var(--dai)}
+  .charm[data-color="zhu"] .c-top{background:var(--zhu)}
+  .charm[data-color="qing"] .c-top{background:var(--qing)}
+  .charm:hover{transform:translateY(-8px) scale(1.04);box-shadow:0 8px 18px rgba(0,0,0,.35);z-index:5}
+  @keyframes floaty{
+    0%,100%{transform:translateY(0) rotate(var(--r,0deg))}
+    50%{transform:translateY(-6px) rotate(calc(var(--r,0deg) + 1.5deg))}
+  }
+  .charm.new{animation:dropin .9s cubic-bezier(.2,.9,.3,1.2) both, floaty 5s ease-in-out .9s infinite}
+  @keyframes dropin{
+    0%{opacity:0;transform:translateY(-70px) scale(.6)}
+    60%{opacity:1;transform:translateY(6px) scale(1.05)}
+    100%{opacity:1;transform:translateY(0) scale(1)}
+  }
+
+  .pool-empty{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;pointer-events:none;
+    color:rgba(245,241,232,.65);letter-spacing:4px;font-size:15px;
+  }
+
+  /* ===== 投签 ===== */
+  .write-card .card-body{display:flex;gap:14px}
+  textarea#input{
+    flex:1;min-height:170px;resize:none;border:none;outline:none;
+    background:transparent;font-family:inherit;font-size:17px;line-height:1.9;
+    color:var(--ink);letter-spacing:1px;
+    border-right:1px dashed rgba(26,26,26,.2);padding-right:12px;
+  }
+  textarea#input::placeholder{color:rgba(26,26,26,.35)}
+  .write-side{display:flex;flex-direction:column;gap:12px;justify-content:space-between;min-width:120px}
+  .color-label{font-size:12px;color:var(--ink-soft);letter-spacing:2px}
+  .colors{display:flex;flex-direction:column;gap:8px}
+  .swatch{
+    width:30px;height:30px;border-radius:50%;cursor:pointer;position:relative;
+    border:2px solid transparent;box-shadow:0 2px 5px rgba(0,0,0,.2);
+    transition:transform .2s,border-color .2s;
+  }
+  .swatch[data-c="mo"]{background:#1a1a1a}
+  .swatch[data-c="dai"]{background:var(--dai)}
+  .swatch[data-c="zhu"]{background:var(--zhu)}
+  .swatch[data-c="qing"]{background:var(--qing)}
+  .swatch.sel{transform:scale(1.15);border-color:var(--ink)}
+  .swatch.sel::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px}
+  .btn{
+    width:100%;border:none;background:var(--ink);color:var(--paper);
+    padding:12px 0;font-family:inherit;font-size:15px;letter-spacing:3px;
+    cursor:pointer;border-radius:3px;transition:background .25s,transform .15s;
+  }
+  .btn:hover{background:#000;transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid rgba(26,26,26,.4)}
+  .btn.ghost:hover{background:rgba(26,26,26,.06)}
+  .btn.danger{background:transparent;color:var(--zhu);border:1px solid var(--zhu)}
+  .btn.danger:hover{background:var(--zhu);color:#fff}
+
+  /* ===== 签谱时间轴 ===== */
+  .timeline{max-height:430px;overflow-y:auto;padding-right:4px}
+  .timeline::-webkit-scrollbar{width:6px}
+  .timeline::-webkit-scrollbar-thumb{background:rgba(26,26,26,.25);border-radius:3px}
+  .tl-item{
+    display:flex;gap:12px;padding:12px 0;border-bottom:1px dashed rgba(26,26,26,.15);
+    cursor:pointer;transition:background .2s;position:relative;padding-left:14px;
+  }
+  .tl-item::before{content:"";position:absolute;left:0;top:18px;width:6px;height:6px;border-radius:50%;background:var(--seal)}
+  .tl-item:hover{background:rgba(26,26,26,.05)}
+  .tl-item .tl-date{writing-mode:vertical-rl;font-size:12px;color:var(--ink-soft);letter-spacing:2px;min-width:20px;flex:none}
+  .tl-item .tl-body{flex:1;min-width:0}
+  .tl-item .tl-text{font-size:15px;line-height:1.6;color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .tl-item .tl-meta{font-size:12px;color:var(--zhu);margin-top:4px;letter-spacing:1px}
+  .tl-empty{padding:30px 0;text-align:center;color:var(--ink-soft);letter-spacing:3px;font-size:14px}
+
+  /* ===== 捞签弹层 ===== */
+  .modal-mask{
+    position:fixed;inset:0;background:rgba(20,20,20,.55);backdrop-filter:blur(2px);
+    display:none;align-items:center;justify-content:center;z-index:50;
+  }
+  .modal-mask.show{display:flex}
+  .modal{
+    width:min(420px,90vw);background:var(--paper);border-radius:4px;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);position:relative;
+    animation:popin .4s cubic-bezier(.2,.9,.3,1.3) both;
+    border:1px solid rgba(26,26,26,.2);
+  }
+  @keyframes popin{from{opacity:0;transform:translateY(30px) scale(.9)}to{opacity:1;transform:none}}
+  .modal .m-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 20px 8px;
+  }
+  .m-title{font-size:20px;letter-spacing:4px;color:var(--ink);font-weight:700}
+  .m-close{cursor:pointer;font-size:20px;color:var(--ink-soft);border:none;background:none;line-height:1}
+  .m-close:hover{color:var(--ink)}
+  .m-body{padding:6px 24px 20px}
+  .m-charm-ghost{
+    writing-mode:vertical-rl;font-size:18px;line-height:2;color:var(--ink);
+    border:1px solid rgba(26,26,26,.3);border-left:6px solid var(--dai);
+    padding:18px 16px;margin:8px auto 18px;max-width:220px;min-height:120px;
+    background:rgba(255,255,255,.4);box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .m-charm-ghost[data-c="dai"]{border-left-color:var(--dai)}
+  .m-charm-ghost[data-c="zhu"]{border-left-color:var(--zhu)}
+  .m-charm-ghost[data-c="qing"]{border-left-color:var(--qing)}
+  .m-charm-ghost[data-c="mo"]{border-left-color:var(--ink)}
+  .m-meta{text-align:center;font-size:13px;color:var(--ink-soft);letter-spacing:2px;line-height:1.9}
+  .m-meta .lunar{color:var(--zhu)}
+  .m-actions{display:flex;gap:10px;justify-content:center;margin-top:20px}
+  .m-actions .btn{width:120px}
+
+  .toast{
+    position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:var(--paper);padding:10px 22px;border-radius:20px;
+    font-size:14px;letter-spacing:2px;opacity:0;pointer-events:none;
+    transition:all .4s;z-index:60;box-shadow:var(--shadow);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  footer{
+    margin-top:26px;text-align:center;font-size:12px;color:rgba(26,26,26,.4);
+    letter-spacing:3px;
+  }
+</style>
+</head>
+<body>
+
+<!-- 远山水墨背景 -->
+<div class="mountains" aria-hidden="true">
+  <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <linearGradient id="m1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3a4a5a" stop-opacity=".10"/>
+        <stop offset="1" stop-color="#3a4a5a" stop-opacity=".02"/>
+      </linearGradient>
+      <linearGradient id="m2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1a1a1a" stop-opacity=".14"/>
+        <stop offset="1" stop-color="#1a1a1a" stop-opacity=".03"/>
+      </linearGradient>
+      <filter id="rough"><feGaussianBlur stdDeviation="1.2"/></filter>
+    </defs>
+    <!-- 远山 -->
+    <path d="M0 560 L180 470 L320 520 L480 430 L640 500 L820 420 L1000 500 L1180 440 L1320 510 L1440 470 L1440 900 L0 900 Z"
+          fill="url(#m1)" filter="url(#rough)"/>
+    <!-- 近山 -->
+    <path d="M0 640 L220 560 L400 620 L620 540 L840 610 L1060 550 L1260 620 L1440 580 L1440 900 L0 900 Z"
+          fill="url(#m2)" filter="url(#rough)"/>
+    <!-- 孤舟 -->
+    <g opacity=".5" filter="url(#rough)">
+      <path d="M700 700 q60 -18 120 0 q-60 14 -120 0 Z" fill="#1a1a1a"/>
+      <line x1="760" y1="700" x2="760" y2="660" stroke="#1a1a1a" stroke-width="2"/>
+    </g>
+    <!-- 垂柳 (飞白) -->
+    <g opacity=".4">
+      <path d="M1180 470 q40 40 20 120 q-30 40 10 90" stroke="#1a1a1a" stroke-width="3" fill="none" filter="url(#rough)"/>
+      <path d="M1200 500 q30 30 8 90" stroke="#1a1a1a" stroke-width="2" fill="none" filter="url(#rough)"/>
+    </g>
+  </svg>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="title-block">
+      <div class="main-title">墨池</div>
+      <div class="sub-title">日记许愿池 · 投签寄心事</div>
+      <div class="seal">墨池</div>
+    </div>
+    <div class="header-right">
+      <div class="today" id="todayBox">
+        <div class="sol"></div>
+        <div class="lunar"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- 左：墨池 + 签谱 -->
+    <div style="display:flex;flex-direction:column;gap:22px">
+      <div class="card pool-card">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
+        <div class="pool-wrap">
+          <canvas id="pool"></canvas>
+          <div class="pool-cap" id="poolCap">一池墨色 · 心事成签</div>
+          <div id="charmLayer" style="position:absolute;inset:0;overflow:hidden"></div>
+          <div class="pool-empty" id="poolEmpty">
+            <div>池中尚无签影</div>
+            <div style="font-size:12px;margin-top:8px;letter-spacing:2px;opacity:.7">写下今日心事，掷入墨池</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
+        <div style="display:flex;height:100%">
+          <div class="card-title">签谱</div>
+          <div class="card-body" style="flex:1">
+            <div class="timeline" id="timeline"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：投签 -->
+    <div class="card write-card">
+      <span class="corner tl"></span><span class="corner tr"></span>
+      <span class="corner bl"></span><span class="corner br"></span>
+      <div style="display:flex;height:100%">
+        <div class="card-title" style="height:auto;min-height:170px">投签</div>
+        <div class="card-body">
+          <textarea id="input" placeholder="今日心事，或一句心愿…&#10;（写罢掷入墨池，日后捞签回看）" maxlength="60"></textarea>
+          <div class="write-side">
+            <div>
+              <div class="color-label">签色</div>
+              <div class="colors" id="colors">
+                <div class="swatch sel" data-c="mo" title="墨"></div>
+                <div class="swatch" data-c="dai" title="黛"></div>
+                <div class="swatch" data-c="zhu" title="朱"></div>
+                <div class="swatch" data-c="qing" title="青"></div>
+              </div>
+            </div>
+            <button class="btn" id="throwBtn">掷入墨池</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>墨池 · 纯本地存储 · 心事不下</footer>
+</div>
+
+<!-- 捞签弹层 -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <div class="m-head">
+      <div class="m-title">捞签</div>
+      <button class="m-close" id="mClose">✕</button>
+    </div>
+    <div class="m-body">
+      <div class="m-charm-ghost" id="mGhost"></div>
+      <div class="m-meta" id="mMeta"></div>
+      <div class="m-actions">
+        <button class="btn danger" id="mBurn">焚签</button>
+        <button class="btn ghost" id="mCloseBtn">合上</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 数据 ================= */
+const LS_KEY="mocchi_diary_v1";
+let charms=[];        // {id,text,color,date,ts}
+let activeColor="mo";
+let current=null;     // 当前捞起
+let ripples=[];       // canvas 涟漪
+
+function load(){ try{charms=JSON.parse(localStorage.getItem(LS_KEY)||"[]");}catch(e){charms=[];} }
+function save(){ localStorage.setItem(LS_KEY,JSON.stringify(charms)); }
+
+/* ================= 农历 / 节气 ================= */
+const GAN=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+const ZHI=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const ANIMALS=["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"];
+
+// 经典农历数据表 LUNAR_INFO[y-1900]
+// 低4位=闰月序(0无)；bit4..15=12月大小；bit16=闰月大小；bit19保留
+const LUNAR_INFO=[
+0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+0x04ae0,0x0a5b6,0x05140,0x051a0,0x095b6,0x052d0,0x0a958,0x0e250,0x06260,0x0d260,
+0x0baa8,0x056d0,0x055b2,0x04975,0x0497c,0x06ca0,0x0e950,0x0e952,0x0d250,0x0d9a8,
+0x05b50,0x04b60,0x0a576,0x054a0,0x0d1b0,0x0e1d0,0x0e94c,0x0d1a0,0x051b0,0x05290,
+0x0a938,0x04960,0x04976,0x05260,0x0e938,0x0e938,0x0baa0,0x0d2a0,0x0d258,0x0c250,
+0x05520,0x05528,0x055c0,0x0a5b0,0x0a5b6,0x09570,0x07550,0x06554,0x054a0,0x0dad0,
+0x055d8,0x056b0,0x055b0,0x055b0,0x05618,0x055a0,0x075d0,0x05578,0x056a0,0x09ad0,
+0x056d0,0x04e40,0x05e70,0x04ed0,0x04ee0,0x056a0,0x096d8,0x056b0,0x056b0,0x05e40,
+0x06aa0,0x065a8,0x05ad0,0x052d8,0x04b60,0x05360,0x049d0,0x04a40,0x051b0,0x052d0,
+0x04b60,0x0d2a8,0x0c250,0x0c350,0x0b270,0x06560,0x05570,0x07550,0x055a0,0x055b0,
+0x04690,0x06794,0x05050,0x04d50,0x05c90,0x05d00,0x05e70,0x05e60,0x05e60,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x09570,0x04ae0,
+0x04970,0x06560,0x054d0,0x055d8,0x055b0,0x056b0,0x056a0,0x056d0,0x04e40,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,0x05e70,
+0x05e70
+];
+// 边界保护：超出 1900-2100 时就近钳制
+function li_(y){
+  const i=y-1900;
+  const idx=Math.max(0,Math.min(i,LUNAR_INFO.length-1));
+  return LUNAR_INFO[idx];
+}
+function leapMonthOf(y){ return li_(y)&0xf; }
+function leapDays(y){ const L=li_(y); return leapMonthOf(y)?((L&0x10000)?30:29):0; }
+function mDays(y,m){ return ((li_(y)<<(16-m))&0x10000)?30:29; }
+function yDays(y){ let s=0;for(let m=1;m<=12;m++)s+=mDays(y,m); return s+leapDays(y); }
+
+// 公历->农历（基准 1900.1.31 农历正月初一）
+function lunarFromSolar(date){
+  let offset=Math.floor((date.getTime()-new Date(1900,0,31).getTime())/86400);
+  let y=1900;
+  while(offset>=yDays(y)){ offset-=yDays(y); y++; }
+  let isLeap=false, m=1;
+  const lm=leapMonthOf(y);
+  for(m=1;m<=12;m++){
+    if(m===lm){
+      const md=mDays(y,m);
+      if(offset<md) break;
+      offset-=md;
+      // 进入闰月
+      isLeap=true; m++;
+      const lmd=leapDays(y);
+      if(offset<lmd) break;
+      offset-=lmd;
+    }else{
+      const md=mDays(y,m);
+      if(offset<md) break;
+      offset-=md;
+    }
+  }
+  return {y, m, isLeap, day:offset+1};
+}
+function lunarYearGanzhi(y){ const i=((y-4)%60+60)%60; return GAN[i%10]+ZHI[i%12]; }
+function yearAnimal(y){ return ANIMALS[((y-4)%12+12)%12]; }
+
+const mCN=["正","二","三","四","五","六","七","八","九","十","冬","腊"];
+const dCN=n=>{
+  if(n===10)return"初十";if(n===20)return"二十";if(n===30)return"三十";
+  const a=["初","十","廿","三"];
+  return a[Math.floor((n-1)/10)]+["一","二","三","四","五","六","七","八","九","十"][(n-1)%10];
+};
+function getLunar(d){
+  const r=lunarFromSolar(d);
+  return {
+    label:(r.isLeap?"闰":"")+mCN[r.m-1]+"月"+dCN(r.day),
+    ganzhi:lunarYearGanzhi(r.y),
+    animal:yearAnimal(r.y)
+  };
+}
+// 二十四节气：按公历"节气/中气"出现月份近似定位（展示级精度）
+function getSolarTerm(d){
+  const m=d.getMonth(), day=d.getDate();
+  // 每月两个节气：前=节气(小/大) 后=中气(立/春/秋/冬/至等)，按 15 日界近似
+  const J=[["小寒","大寒"],["立春","雨水"],["惊蛰","春分"],["清明","谷雨"],
+           ["立夏","小满"],["芒种","夏至"],["小暑","大暑"],["立秋","处暑"],
+           ["白露","秋分"],["寒露","霜降"],["立冬","小雪"],["大雪","冬至"]];
+  // 1月->J[0],2月->J[1] ... 以公历月对应
+  const pair=J[m];
+  return pair[day<15?0:1];
+}
+function fmtSolar(d){ return d.getFullYear()+"年"+(d.getMonth()+1)+"月"+d.getDate()+"日"; }
+
+/* ================= 渲染头部今天 ================= */
+function renderToday(){
+  const now=new Date();
+  const l=getLunar(now);
+  document.querySelector("#todayBox .sol").textContent=fmtSolar(now);
+  document.querySelector("#todayBox .lunar").textContent=
+    l.ganzhi+"年 · "+l.animal+" · "+l.label+" · "+getSolarTerm(now);
+}
+
+/* ================= 墨池 Canvas 涟漪 ================= */
+const canvas=document.getElementById("pool");
+const ctx=canvas.getContext("2d");
+let poolW=0,poolH=0,frame=0;
+function sizeCanvas(){
+  const r=canvas.parentElement.getBoundingClientRect();
+  poolW=canvas.width=r.width; poolH=canvas.height=r.height;
+}
+window.addEventListener("resize",sizeCanvas);
+
+function spawnRipple(x,y){
+  for(let i=0;i<3;i++){
+    ripples.push({x,y,r:0,alpha:1- i*0.12, speed:2+i*0.8});
+  }
+}
+function drawPool(){
+  frame++;
+  ctx.clearRect(0,0,poolW,poolH);
+  // 池底水墨渐变（半透明，让下层真实水墨纹理透出）
+  ctx.clearRect(0,0,poolW,poolH);
+  const g=ctx.createLinearGradient(0,0,0,poolH);
+  g.addColorStop(0,"rgba(35,42,48,.55)");
+  g.addColorStop(.5,"rgba(26,31,36,.68)");
+  g.addColorStop(1,"rgba(14,17,20,.85)");
+  ctx.fillStyle=g; ctx.fillRect(0,0,poolW,poolH);
+  // 微动水墨（慢漂移云雾）
+  for(let i=0;i<3;i++){
+    const cx=poolW*(0.3+0.3*i)+Math.sin(frame*0.004+i)*30;
+    const cy=poolH*(0.4+0.2*i)+Math.cos(frame*0.005+i)*20;
+    const rg=ctx.createRadialGradient(cx,cy,0,cx,cy,120+ i*40);
+    rg.addColorStop(0,"rgba(245,241,232,0.05)");
+    rg.addColorStop(1,"rgba(245,241,232,0)");
+    ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(cx,cy,160+i*40,0,7); ctx.fill();
+  }
+  // 涟漪
+  ripples=ripples.filter(rp=>rp.alpha>0.01);
+  ripples.forEach(rp=>{
+    rp.r+=rp.speed; rp.alpha*=0.965;
+    ctx.strokeStyle=`rgba(245,241,232,${rp.alpha*0.7})`;
+    ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(rp.x,rp.y,rp.r,0,7); ctx.stroke();
+    // 内圈墨色
+    ctx.strokeStyle=`rgba(20,20,20,${rp.alpha*0.6})`;
+    ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(rp.x,rp.y,rp.r*0.7,0,7); ctx.stroke();
+  });
+  // 中央月
+  const mx=poolW*0.5,my=poolH*0.32;
+  const mg=ctx.createRadialGradient(mx,my,0,mx,my,60);
+  mg.addColorStop(0,"rgba(245,241,232,.5)");
+  mg.addColorStop(.4,"rgba(245,241,232,.18)");
+  mg.addColorStop(1,"rgba(245,241,232,0)");
+  ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(mx,my,60,0,7); ctx.fill();
+  requestAnimationFrame(drawPool);
+}
+
+/* ================= 签影 ================= */
+const charmLayer=document.getElementById("charmLayer");
+function layoutCharms(){
+  const items=charmsLayer.querySelectorAll(".charm");
+  items.forEach((el,idx)=>{
+    const layer=Math.floor(idx/4);      // 每层4个
+    const pos=idx%4;
+    const colW=poolW/4;
+    el.style.left=(colW*pos + 20)+"px";
+    el.style.top=(poolH*0.2 + layer*(poolH*0.28))+"px";
+    el.style.setProperty("--r",(Math.sin(idx*1.7)*3)+"deg");
+  });
+  document.getElementById("poolEmpty").style.display=charms.length?"none":"flex";
+  document.getElementById("poolCap").style.opacity=charms.length?1:.5;
+}
+function renderCharms(newestId){
+  charmLayer.innerHTML="";
+  // 按时间近→远，最多显示12个
+  const show=[...charms].sort((a,b)=>b.ts-a.ts).slice(0,12);
+  show.forEach((c,i)=>{
+    const el=document.createElement("div");
+    el.className="charm"+(c.id===newestId?" new":"");
+    el.dataset.color=c.color; el.dataset.id=c.id;
+    el.innerHTML=`<div class="c-top"></div><div class="c-text">${escapeHtml(c.text)}</div>`;
+    el.title=c.text;
+    el.addEventListener("click",()=>openModal(c));
+    charmLayer.appendChild(el);
+  });
+  layoutCharms();
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+
+/* ================= 签谱 ================= */
+function renderTimeline(){
+  const tl=document.getElementById("timeline");
+  if(!charms.length){ tl.innerHTML=`<div class="tl-empty">池中无签 · 掷一支入池</div>`; return;}
+  tl.innerHTML="";
+  [...charms].sort((a,b)=>b.ts-a.ts).forEach(c=>{
+    const d=new Date(c.ts);
+    const l=getLunar(d);
+    const row=document.createElement("div");
+    row.className="tl-item";
+    row.innerHTML=`
+      <div class="tl-date">${d.getFullYear()}<br>${d.getMonth()+1}月${d.getDate()}日</div>
+      <div class="tl-body">
+        <div class="tl-text">${escapeHtml(c.text)}</div>
+        <div class="tl-meta">${l.label} · ${getSolarTerm(d)} · ${COLOR_NAME[c.color]}</div>
+      </div>`;
+    row.addEventListener("click",()=>openModal(c));
+    tl.appendChild(row);
+  });
+}
+const COLOR_NAME={mo:"墨",dai:"黛",zhu:"朱",qing:"青"};
+
+/* ================= 投签 ================= */
+document.getElementById("colors").addEventListener("click",e=>{
+  const sw=e.target.closest(".swatch"); if(!sw)return;
+  document.querySelectorAll(".swatch").forEach(s=>s.classList.remove("sel"));
+  sw.classList.add("sel"); activeColor=sw.dataset.c;
+});
+document.getElementById("throwBtn").addEventListener("click",throwCharm);
+document.getElementById("input").addEventListener("keydown",e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==="Enter") throwCharm();
+});
+function throwCharm(){
+  const text=document.getElementById("input").value.trim();
+  if(!text){ toast("请先写下心事"); document.getElementById("input").focus(); return;}
+  const c={id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+           text,color:activeColor,date:fmtSolar(new Date()),ts:Date.now()};
+  charms.unshift(c); save();
+  document.getElementById("input").value="";
+  // 涟漪在池中央
+  spawnRipple(poolW/2,poolH/2);
+  spawnRipple(poolW*0.45,poolH*0.55);
+  renderCharms(c.id); renderTimeline();
+  toast("已掷入墨池 · "+COLOR_NAME[activeColor]+"签");
+}
+
+/* ================= 捞签弹层 ================= */
+const mask=document.getElementById("modalMask");
+function openModal(c){
+  current=c;
+  const d=new Date(c.ts); const l=getLunar(d);
+  const g=document.getElementById("mGhost");
+  g.textContent=c.text; g.dataset.c=c.color;
+  document.getElementById("mMeta").innerHTML=
+    `${fmtSolar(d)}<br><span class="lunar">${l.ganzhi}${l.animal}年 · ${l.label} · ${getSolarTerm(d)}</span>`;
+  mask.classList.add("show");
+}
+function closeModal(){ mask.classList.remove("show"); current=null; }
+document.getElementById("mClose").addEventListener("click",closeModal);
+document.getElementById("mCloseBtn").addEventListener("click",closeModal);
+mask.addEventListener("click",e=>{ if(e.target===mask)closeModal(); });
+document.getElementById("mBurn").addEventListener("click",()=>{
+  if(!current)return;
+  charms=charms.filter(c=>c.id!==current.id); save();
+  closeModal(); renderCharms(); renderTimeline(); toast("已焚签");
+});
+
+/* ================= toast ================= */
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+/* ================= 初始化 ================= */
+load(); renderToday(); renderCharms(); renderTimeline();
+sizeCanvas(); requestAnimationFrame(drawPool);
+setTimeout(()=>{ layoutCharms(); },50);
+</script>
+</body>
+</html>
